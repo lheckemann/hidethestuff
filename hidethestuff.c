@@ -119,12 +119,13 @@ int main() {
         }
         sprintf(user_dir, "/run/user/%d/hidethestuff/XXXXXX", getuid());
     }
-    printf("%s\n", user_dir);
     namespace_root = mkdtemp(user_dir);
     if (!namespace_root) {
         perror("mkdtemp");
         exit(-1);
     }
+
+    printf("root is %s\n", namespace_root);
 
     // Create new user namespace
     unshare(CLONE_NEWUSER);
@@ -136,12 +137,12 @@ int main() {
     }
 
     if (write_to_file("/proc/self/uid_map", "0 1000 1") != 0) {
-        perror("writing to setgroups failed");
+        perror("writing to uid_map failed");
         exit(-1);
     }
 
     if (write_to_file("/proc/self/gid_map", "0 100 1") != 0) {
-        perror("writing to setgroups failed");
+        perror("writing to gid_map failed");
         exit(-1);
     }
 
@@ -188,8 +189,29 @@ int main() {
         }
         if (mount("proc", "/proc", "proc", 0, NULL) != 0) {
             perror("mount /proc");
+            return -1;
         }
-        setuid(1000);
+        err = make_dirs_recursive("/dev");
+        if (err != 0) {
+            fprintf(stderr, "create /dev: %s", strerror(err));
+            return -1;
+        }
+        if (mknod("/dev/null", 0666, makedev(1, 3)) != 0) {
+            perror("mknod /dev/null");
+        }
+        if (mknod("/dev/zero", 0666, makedev(1, 5)) != 0) {
+            perror("mknod /dev/zero");
+        }
+        if (mknod("/dev/full", 0666, makedev(1, 7)) != 0) {
+            perror("mknod /dev/full");
+        }
+        if (mknod("/dev/random", 0666, makedev(1, 8)) != 0) {
+            perror("mknod /dev/random");
+        }
+        if (mknod("/dev/urandom", 0666, makedev(1, 9)) != 0) {
+            perror("mknod /dev/urandom");
+        }
+
         execlp("bash", "", NULL);
     }
 }
